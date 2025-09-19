@@ -804,6 +804,10 @@ export default async function decorate(block) {
     enableProviderNameSearch
   });
   
+  // ✅ Clear out all config rows immediately so they don't render on page
+  block.innerHTML = '';
+  block.className = `find-doctor ${layout}`;
+  
   // Create config object for compatibility
   const config = {
     title,
@@ -818,22 +822,6 @@ export default async function decorate(block) {
     enableSpecialtyFilter,
     enableProviderNameSearch
   };
-  
-  // Hide configuration rows after reading them (same approach as search block)
-  try {
-    const configRows = [];
-    for (let i = 1; i <= 11; i++) {
-      const row = block.querySelector(`:scope > div:nth-child(${i})`);
-      if (row) configRows.push(row);
-    }
-    configRows.forEach((row) => { if (row) row.style.display = 'none'; });
-  } catch (e) {
-    console.log('[find-doctor] config/hide rows error', e);
-  }
-  
-  // Clear the block content and set up the component
-  block.innerHTML = '';
-  block.className = `find-doctor ${layout}`;
   
   // Create header
   const header = createElement('div', 'find-doctor-header');
