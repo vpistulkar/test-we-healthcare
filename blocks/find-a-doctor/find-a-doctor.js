@@ -613,18 +613,8 @@ function createSearchForm(config, doctors = []) {
 }
 
 export default async function decorate(block) {
-  // Debug: Log the entire block structure first
-  console.log('=== BLOCK STRUCTURE DEBUG ===');
-  console.log('Block HTML before processing:', block.innerHTML);
-  console.log('Block children count:', block.children.length);
-  console.log('Block attributes:', Array.from(block.attributes).map(attr => `${attr.name}="${attr.value}"`));
-  console.log('Block data-aue-resource:', block.getAttribute('data-aue-resource'));
-  console.log('Block children:', Array.from(block.children).map((child, index) => ({
-    index,
-    tagName: child.tagName,
-    className: child.className,
-    textContent: child.textContent?.trim().substring(0, 100) + '...'
-  })));
+  // Simple debug log
+  console.log('🏥 Find-a-doctor block decorating...');
   
   // --- Read Configuration ---
   let title = 'Find a Doctor';
@@ -821,45 +811,9 @@ export default async function decorate(block) {
       enableProviderNameSearch
     };
     
-  // Preserve config rows with Universal Editor attributes before clearing
-  const configRows = [];
-  try {
-    for (let i = 1; i <= 11; i++) {
-      const row = block.querySelector(`:scope > div:nth-child(${i})`);
-      if (row) {
-        // Clone the row to preserve it
-        const clonedRow = row.cloneNode(true);
-        configRows.push(clonedRow);
-        
-        // Add Universal Editor attributes to make config editable
-        const cells = clonedRow.querySelectorAll(':scope > div');
-        if (cells.length >= 2) {
-          const key = cells[0].textContent?.trim()?.toLowerCase();
-          if (key) {
-            // Mark the value cell as editable
-            cells[1].setAttribute('data-aue-prop', key);
-            cells[1].setAttribute('data-aue-type', 'text');
-            cells[1].setAttribute('data-aue-label', key.charAt(0).toUpperCase() + key.slice(1));
-          }
-        }
-      }
-    }
-    console.log('Preserved', configRows.length, 'config rows with Universal Editor attributes');
-  } catch (e) {
-    console.log('[find-doctor] config preservation error', e);
-  }
-    
-  // Clear everything before re-render
+  // Clear everything and set layout class
   block.innerHTML = '';
   block.className = `find-doctor ${layout}`;
-  
-  // Re-add preserved config rows but hidden
-  configRows.forEach((row) => { 
-    if (row) {
-      row.style.display = 'none';
-      block.appendChild(row);
-    }
-  });
     
     // --- Build UI ---
     const header = createElement('div', 'find-doctor-header');
@@ -995,51 +949,6 @@ export default async function decorate(block) {
 
   // Initial render
   renderResults(doctors, resultsContainer);
-
-  // Debug: Add Universal Editor event listeners to understand what's happening
-  const debugUEEvents = (eventName) => {
-    document.querySelector('main').addEventListener(eventName, (event) => {
-      console.log(`🔍 MAIN received ${eventName} event:`, event.detail);
-      
-      const resource = event.detail?.request?.target?.resource;
-      const blockResource = block.getAttribute('data-aue-resource');
-      console.log('Event resource:', resource);
-      console.log('Block resource:', blockResource);
-      console.log('Resources match:', resource === blockResource);
-      
-      if (resource === blockResource) {
-        console.log('🎯 This event is for our find-a-doctor block!');
-        
-        // Debug the update content
-        const updates = event.detail?.response?.updates;
-        if (updates && updates.length > 0) {
-          const { content } = updates[0];
-          console.log('Update content received:', content?.substring(0, 500) + '...');
-          
-          // Parse and check if new block exists
-          const parsedUpdate = new DOMParser().parseFromString(content, 'text/html');
-          const newBlock = parsedUpdate.querySelector(`[data-aue-resource="${blockResource}"]`);
-          console.log('New block found in update:', !!newBlock);
-          if (newBlock) {
-            console.log('New block HTML:', newBlock.outerHTML.substring(0, 300) + '...');
-          } else {
-            console.log('❌ No new block found - this is why reload fails!');
-            console.log('Available elements with data-aue-resource:', 
-              Array.from(parsedUpdate.querySelectorAll('[data-aue-resource]')).map(el => el.getAttribute('data-aue-resource')));
-            
-            // Fallback: Force page reload after a short delay to let AEM finish processing
-            console.log('🔄 Forcing page reload as fallback...');
-            setTimeout(() => {
-              window.location.reload();
-            }, 1000);
-          }
-        }
-      }
-    }, true); // Use capture phase to catch before stopPropagation
-  };
-
-  // Listen for Universal Editor events at main level
-  ['aue:content-patch', 'aue:content-update', 'aue:content-add', 'aue:content-move', 'aue:content-remove'].forEach(debugUEEvents);
   
   console.log('✅ Find-a-doctor block decoration completed');
 }
