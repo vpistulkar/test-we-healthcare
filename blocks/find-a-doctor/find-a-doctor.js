@@ -953,4 +953,22 @@ export default async function decorate(block) {
   renderResults(doctors, resultsContainer);
   
   console.log(`✅ Find-a-doctor block decoration completed at ${timestamp}`);
+  
+  // Add event listener to force reload when our block changes
+  const blockResource = block.getAttribute('data-aue-resource');
+  if (blockResource) {
+    const handleUEEvent = (event) => {
+      const eventResource = event.detail?.request?.target?.resource;
+      if (eventResource === blockResource) {
+        console.log('🔄 Find-a-doctor block change detected, forcing page reload...');
+        setTimeout(() => {
+          window.location.reload();
+        }, 500); // Small delay to let AEM finish processing
+      }
+    };
+    
+    // Listen for Universal Editor events
+    document.querySelector('main')?.addEventListener('aue:content-patch', handleUEEvent);
+    document.querySelector('main')?.addEventListener('aue:content-update', handleUEEvent);
+  }
 }
