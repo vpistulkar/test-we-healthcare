@@ -613,78 +613,76 @@ function createSearchForm(config, doctors = []) {
 }
 
 export default async function decorate(block) {
-  // Define a render function so we can re-run when config changes
-  async function render() {
-    // Debug: Log the entire block structure first
-    console.log('=== BLOCK STRUCTURE DEBUG ===');
-    console.log('Block HTML before processing:', block.innerHTML);
-    console.log('Block children count:', block.children.length);
-    console.log('Block children:', Array.from(block.children).map((child, index) => ({
-      index,
-      tagName: child.tagName,
-      className: child.className,
-      textContent: child.textContent?.trim().substring(0, 100) + '...'
-    })));
-    
-    // --- Read Configuration ---
-    let title = 'Find a Doctor';
-    let subtitle = 'Search for healthcare providers in your area';
-    let layout = 'default';
-    let dataSourceType = 'dam-json';
-    let damJsonPath = '';
-    let contentFragmentFolder = '';
-    let apiUrl = '';
-    let staticJsonPath = '/data/doctors.json';
-    let enableLocationSearch = true;
-    let enableSpecialtyFilter = true;
-    let enableProviderNameSearch = true;
-    
-    // Try to read configuration from the block structure
-    // AEM might render this differently, so we'll try multiple approaches
-    
-    // Approach 1: Keyed parsing by label to avoid positional mix-ups
-    const rows = Array.from(block.querySelectorAll(':scope > div'));
-    rows.forEach((row) => {
-      const cells = row.querySelectorAll(':scope > div');
-      if (cells.length < 2) return;
-      const key = cells[0].textContent?.trim()?.toLowerCase();
-      if (!key) return;
-      let valueEl = cells[1];
-      const link = valueEl.querySelector('a');
-      const raw = (link?.getAttribute('title') || link?.textContent || valueEl.textContent || '').trim();
-      const val = raw;
-      console.log(`Parsing key: "${key}" with value: "${val}"`);
-      switch (key) {
-        case 'title':
-          if (val && val.toLowerCase() !== 'title') {
-            console.log(`Setting title to: "${val}"`);
-            title = val;
-          }
-          break;
-        case 'subtitle':
-          if (val && val.toLowerCase() !== 'subtitle') subtitle = val; break;
-        case 'layout':
-          if (val && val.toLowerCase() !== 'layout') layout = val; break;
-        case 'datasourcetype':
-          if (val && val.toLowerCase() !== 'datasourcetype') dataSourceType = val; break;
-        case 'damjsonpath':
-          if (val && val.toLowerCase() !== 'damjsonpath') damJsonPath = val; break;
-        case 'contentfragmentfolder':
-          if (val && val.toLowerCase() !== 'contentfragmentfolder') contentFragmentFolder = val; break;
-        case 'apiurl':
-          if (val && val.toLowerCase() !== 'apiurl') apiUrl = val; break;
-        case 'staticjsonpath':
-          if (val && val.toLowerCase() !== 'staticjsonpath') staticJsonPath = val; break;
-        case 'enablelocationsearch':
-          enableLocationSearch = val !== 'false'; break;
-        case 'enablespecialtyfilter':
-          enableSpecialtyFilter = val !== 'false'; break;
-        case 'enableprovidernamesearch':
-          enableProviderNameSearch = val !== 'false'; break;
-        default:
-          break;
-      }
-    });
+  // Debug: Log the entire block structure first
+  console.log('=== BLOCK STRUCTURE DEBUG ===');
+  console.log('Block HTML before processing:', block.innerHTML);
+  console.log('Block children count:', block.children.length);
+  console.log('Block children:', Array.from(block.children).map((child, index) => ({
+    index,
+    tagName: child.tagName,
+    className: child.className,
+    textContent: child.textContent?.trim().substring(0, 100) + '...'
+  })));
+  
+  // --- Read Configuration ---
+  let title = 'Find a Doctor';
+  let subtitle = 'Search for healthcare providers in your area';
+  let layout = 'default';
+  let dataSourceType = 'dam-json';
+  let damJsonPath = '';
+  let contentFragmentFolder = '';
+  let apiUrl = '';
+  let staticJsonPath = '/data/doctors.json';
+  let enableLocationSearch = true;
+  let enableSpecialtyFilter = true;
+  let enableProviderNameSearch = true;
+  
+  // Try to read configuration from the block structure
+  // AEM might render this differently, so we'll try multiple approaches
+  
+  // Approach 1: Keyed parsing by label to avoid positional mix-ups
+  const rows = Array.from(block.querySelectorAll(':scope > div'));
+  rows.forEach((row) => {
+    const cells = row.querySelectorAll(':scope > div');
+    if (cells.length < 2) return;
+    const key = cells[0].textContent?.trim()?.toLowerCase();
+    if (!key) return;
+    let valueEl = cells[1];
+    const link = valueEl.querySelector('a');
+    const raw = (link?.getAttribute('title') || link?.textContent || valueEl.textContent || '').trim();
+    const val = raw;
+    console.log(`Parsing key: "${key}" with value: "${val}"`);
+    switch (key) {
+      case 'title':
+        if (val && val.toLowerCase() !== 'title') {
+          console.log(`Setting title to: "${val}"`);
+          title = val;
+        }
+        break;
+      case 'subtitle':
+        if (val && val.toLowerCase() !== 'subtitle') subtitle = val; break;
+      case 'layout':
+        if (val && val.toLowerCase() !== 'layout') layout = val; break;
+      case 'datasourcetype':
+        if (val && val.toLowerCase() !== 'datasourcetype') dataSourceType = val; break;
+      case 'damjsonpath':
+        if (val && val.toLowerCase() !== 'damjsonpath') damJsonPath = val; break;
+      case 'contentfragmentfolder':
+        if (val && val.toLowerCase() !== 'contentfragmentfolder') contentFragmentFolder = val; break;
+      case 'apiurl':
+        if (val && val.toLowerCase() !== 'apiurl') apiUrl = val; break;
+      case 'staticjsonpath':
+        if (val && val.toLowerCase() !== 'staticjsonpath') staticJsonPath = val; break;
+      case 'enablelocationsearch':
+        enableLocationSearch = val !== 'false'; break;
+      case 'enablespecialtyfilter':
+        enableSpecialtyFilter = val !== 'false'; break;
+      case 'enableprovidernamesearch':
+        enableProviderNameSearch = val !== 'false'; break;
+      default:
+        break;
+    }
+  });
     
     // Fallback: Try readBlockConfig if the standard approach doesn't work
     if (title === 'Find a Doctor' || subtitle === 'Search for healthcare providers in your area' || !damJsonPath) {
@@ -969,20 +967,6 @@ export default async function decorate(block) {
       }
     });
 
-    // Initial render
-    renderResults(doctors, resultsContainer);
-  }
-
-  // Run first render
-  await render();
-
-  // ✅ Auto re-render on config changes
-  const observer = new MutationObserver(() => {
-    console.log('🔄 Config change detected, re-rendering find-a-doctor block...');
-    // Debounce so we don't re-render too often
-    clearTimeout(block._rerenderTimeout);
-    block._rerenderTimeout = setTimeout(() => render(), 300);
-  });
-
-  observer.observe(block, { childList: true, subtree: true, characterData: true });
+  // Initial render
+  renderResults(doctors, resultsContainer);
 }
