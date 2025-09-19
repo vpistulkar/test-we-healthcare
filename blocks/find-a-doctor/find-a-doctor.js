@@ -613,358 +613,376 @@ function createSearchForm(config, doctors = []) {
 }
 
 export default async function decorate(block) {
-  // Debug: Log the entire block structure first
-  console.log('=== BLOCK STRUCTURE DEBUG ===');
-  console.log('Block HTML before processing:', block.innerHTML);
-  console.log('Block children count:', block.children.length);
-  console.log('Block children:', Array.from(block.children).map((child, index) => ({
-    index,
-    tagName: child.tagName,
-    className: child.className,
-    textContent: child.textContent?.trim().substring(0, 100) + '...'
-  })));
-  
-  // Read configuration - try multiple approaches since AEM structure might vary
-  let title = 'Find a Doctor';
-  let subtitle = 'Search for healthcare providers in your area';
-  let layout = 'default';
-  let dataSourceType = 'dam-json';
-  let damJsonPath = '';
-  let contentFragmentFolder = '';
-  let apiUrl = '';
-  let staticJsonPath = '/data/doctors.json';
-  let enableLocationSearch = true;
-  let enableSpecialtyFilter = true;
-  let enableProviderNameSearch = true;
-  
-  // Try to read configuration from the block structure
-  // AEM might render this differently, so we'll try multiple approaches
-  
-  // Approach 1: Keyed parsing by label to avoid positional mix-ups
-  const rows = Array.from(block.querySelectorAll(':scope > div'));
-  rows.forEach((row) => {
-    const cells = row.querySelectorAll(':scope > div');
-    if (cells.length < 2) return;
-    const key = cells[0].textContent?.trim()?.toLowerCase();
-    if (!key) return;
-    let valueEl = cells[1];
-    const link = valueEl.querySelector('a');
-    const raw = (link?.getAttribute('title') || link?.textContent || valueEl.textContent || '').trim();
-    const val = raw;
-    console.log(`Parsing key: "${key}" with value: "${val}"`);
-    switch (key) {
-      case 'title':
-        if (val && val.toLowerCase() !== 'title') {
-          console.log(`Setting title to: "${val}"`);
-          title = val;
-        }
-        break;
-      case 'subtitle':
-        if (val && val.toLowerCase() !== 'subtitle') subtitle = val; break;
-      case 'layout':
-        if (val && val.toLowerCase() !== 'layout') layout = val; break;
-      case 'datasourcetype':
-        if (val && val.toLowerCase() !== 'datasourcetype') dataSourceType = val; break;
-      case 'damjsonpath':
-        if (val && val.toLowerCase() !== 'damjsonpath') damJsonPath = val; break;
-      case 'contentfragmentfolder':
-        if (val && val.toLowerCase() !== 'contentfragmentfolder') contentFragmentFolder = val; break;
-      case 'apiurl':
-        if (val && val.toLowerCase() !== 'apiurl') apiUrl = val; break;
-      case 'staticjsonpath':
-        if (val && val.toLowerCase() !== 'staticjsonpath') staticJsonPath = val; break;
-      case 'enablelocationsearch':
-        enableLocationSearch = val !== 'false'; break;
-      case 'enablespecialtyfilter':
-        enableSpecialtyFilter = val !== 'false'; break;
-      case 'enableprovidernamesearch':
-        enableProviderNameSearch = val !== 'false'; break;
-      default:
-        break;
-    }
-  });
-  
-  // Fallback: Try readBlockConfig if the standard approach doesn't work
-  if (title === 'Find a Doctor' || subtitle === 'Search for healthcare providers in your area' || !damJsonPath) {
-    console.log('=== FALLBACK CONFIGURATION READING ===');
-    console.log('Trying readBlockConfig...');
+  // Define a render function so we can re-run when config changes
+  async function render() {
+    // Debug: Log the entire block structure first
+    console.log('=== BLOCK STRUCTURE DEBUG ===');
+    console.log('Block HTML before processing:', block.innerHTML);
+    console.log('Block children count:', block.children.length);
+    console.log('Block children:', Array.from(block.children).map((child, index) => ({
+      index,
+      tagName: child.tagName,
+      className: child.className,
+      textContent: child.textContent?.trim().substring(0, 100) + '...'
+    })));
     
-    try {
-      const { readBlockConfig } = await import('../../scripts/aem.js');
-      const config = readBlockConfig(block);
-      console.log('readBlockConfig result:', config);
-      
-      if (config && Object.keys(config).length > 0) {
-        if (config.title && config.title !== 'title') {
-          title = config.title;
-          console.log('Found title via readBlockConfig:', title);
-        }
-        if (config.subtitle && config.subtitle !== 'subtitle') {
-          subtitle = config.subtitle;
-          console.log('Found subtitle via readBlockConfig:', subtitle);
-        }
-        if (config.layout && config.layout !== 'layout') {
-          layout = config.layout;
-        }
-        if (config.dataSourceType && config.dataSourceType !== 'dataSourceType') {
-          dataSourceType = config.dataSourceType;
-        }
-        if (config.damJsonPath && config.damJsonPath !== 'damJsonPath') {
-          damJsonPath = config.damJsonPath;
-          console.log('Found DAM JSON path via readBlockConfig:', damJsonPath);
-        }
-        if (config.contentFragmentFolder && config.contentFragmentFolder !== 'contentFragmentFolder') {
-          contentFragmentFolder = config.contentFragmentFolder;
-        }
-        if (config.apiUrl && config.apiUrl !== 'apiUrl') {
-          apiUrl = config.apiUrl;
-        }
-        if (config.staticJsonPath && config.staticJsonPath !== 'staticJsonPath') {
-          staticJsonPath = config.staticJsonPath;
-        }
-        if (config.enableLocationSearch !== undefined) {
-          enableLocationSearch = config.enableLocationSearch !== false;
-        }
-        if (config.enableSpecialtyFilter !== undefined) {
-          enableSpecialtyFilter = config.enableSpecialtyFilter !== false;
-        }
-        if (config.enableProviderNameSearch !== undefined) {
-          enableProviderNameSearch = config.enableProviderNameSearch !== false;
-        }
-      }
-    } catch (error) {
-      console.log('readBlockConfig failed:', error);
-    }
+    // --- Read Configuration ---
+    let title = 'Find a Doctor';
+    let subtitle = 'Search for healthcare providers in your area';
+    let layout = 'default';
+    let dataSourceType = 'dam-json';
+    let damJsonPath = '';
+    let contentFragmentFolder = '';
+    let apiUrl = '';
+    let staticJsonPath = '/data/doctors.json';
+    let enableLocationSearch = true;
+    let enableSpecialtyFilter = true;
+    let enableProviderNameSearch = true;
     
-    // Additional fallback: Try reading from all divs to see what's available
-    console.log('Trying alternative selectors...');
-    const allDivs = block.querySelectorAll(':scope > div');
-    allDivs.forEach((div, index) => {
-      const text = div.textContent?.trim();
-      if (text && text !== '') {
-        console.log(`Div ${index + 1} content:`, text);
+    // Try to read configuration from the block structure
+    // AEM might render this differently, so we'll try multiple approaches
+    
+    // Approach 1: Keyed parsing by label to avoid positional mix-ups
+    const rows = Array.from(block.querySelectorAll(':scope > div'));
+    rows.forEach((row) => {
+      const cells = row.querySelectorAll(':scope > div');
+      if (cells.length < 2) return;
+      const key = cells[0].textContent?.trim()?.toLowerCase();
+      if (!key) return;
+      let valueEl = cells[1];
+      const link = valueEl.querySelector('a');
+      const raw = (link?.getAttribute('title') || link?.textContent || valueEl.textContent || '').trim();
+      const val = raw;
+      console.log(`Parsing key: "${key}" with value: "${val}"`);
+      switch (key) {
+        case 'title':
+          if (val && val.toLowerCase() !== 'title') {
+            console.log(`Setting title to: "${val}"`);
+            title = val;
+          }
+          break;
+        case 'subtitle':
+          if (val && val.toLowerCase() !== 'subtitle') subtitle = val; break;
+        case 'layout':
+          if (val && val.toLowerCase() !== 'layout') layout = val; break;
+        case 'datasourcetype':
+          if (val && val.toLowerCase() !== 'datasourcetype') dataSourceType = val; break;
+        case 'damjsonpath':
+          if (val && val.toLowerCase() !== 'damjsonpath') damJsonPath = val; break;
+        case 'contentfragmentfolder':
+          if (val && val.toLowerCase() !== 'contentfragmentfolder') contentFragmentFolder = val; break;
+        case 'apiurl':
+          if (val && val.toLowerCase() !== 'apiurl') apiUrl = val; break;
+        case 'staticjsonpath':
+          if (val && val.toLowerCase() !== 'staticjsonpath') staticJsonPath = val; break;
+        case 'enablelocationsearch':
+          enableLocationSearch = val !== 'false'; break;
+        case 'enablespecialtyfilter':
+          enableSpecialtyFilter = val !== 'false'; break;
+        case 'enableprovidernamesearch':
+          enableProviderNameSearch = val !== 'false'; break;
+        default:
+          break;
       }
     });
     
-    // Try reading title and subtitle from any div that might contain them
-    const allTextDivs = block.querySelectorAll(':scope > div > div');
-    allTextDivs.forEach((div, index) => {
-      const text = div.textContent?.trim();
-      if (text && text !== '') {
-        console.log(`Text div ${index + 1}:`, text);
-        // Guard against picking DAM paths or URLs as titles
-        const looksLikePath = text.startsWith('/content/') || text.includes('/') || text.includes(':');
-        // If we find text that looks like a proper title/subtitle, use it
-        if (!looksLikePath && text.length > 2 && text.length < 120 && !text.includes('dataSourceType') && !text.includes('dam-json')) {
-          if (title === 'Find a Doctor' && /doctor/i.test(text)) {
-            title = text;
-            console.log('Found title in fallback:', title);
-          } else if (subtitle === 'Search for healthcare providers in your area' && /search|provider|healthcare/i.test(text)) {
-            subtitle = text;
-            console.log('Found subtitle in fallback:', subtitle);
+    // Fallback: Try readBlockConfig if the standard approach doesn't work
+    if (title === 'Find a Doctor' || subtitle === 'Search for healthcare providers in your area' || !damJsonPath) {
+      console.log('=== FALLBACK CONFIGURATION READING ===');
+      console.log('Trying readBlockConfig...');
+      
+      try {
+        const { readBlockConfig } = await import('../../scripts/aem.js');
+        const config = readBlockConfig(block);
+        console.log('readBlockConfig result:', config);
+        
+        if (config && Object.keys(config).length > 0) {
+          if (config.title && config.title !== 'title') {
+            title = config.title;
+            console.log('Found title via readBlockConfig:', title);
+          }
+          if (config.subtitle && config.subtitle !== 'subtitle') {
+            subtitle = config.subtitle;
+            console.log('Found subtitle via readBlockConfig:', subtitle);
+          }
+          if (config.layout && config.layout !== 'layout') {
+            layout = config.layout;
+          }
+          if (config.dataSourceType && config.dataSourceType !== 'dataSourceType') {
+            dataSourceType = config.dataSourceType;
+          }
+          if (config.damJsonPath && config.damJsonPath !== 'damJsonPath') {
+            damJsonPath = config.damJsonPath;
+            console.log('Found DAM JSON path via readBlockConfig:', damJsonPath);
+          }
+          if (config.contentFragmentFolder && config.contentFragmentFolder !== 'contentFragmentFolder') {
+            contentFragmentFolder = config.contentFragmentFolder;
+          }
+          if (config.apiUrl && config.apiUrl !== 'apiUrl') {
+            apiUrl = config.apiUrl;
+          }
+          if (config.staticJsonPath && config.staticJsonPath !== 'staticJsonPath') {
+            staticJsonPath = config.staticJsonPath;
+          }
+          if (config.enableLocationSearch !== undefined) {
+            enableLocationSearch = config.enableLocationSearch !== false;
+          }
+          if (config.enableSpecialtyFilter !== undefined) {
+            enableSpecialtyFilter = config.enableSpecialtyFilter !== false;
+          }
+          if (config.enableProviderNameSearch !== undefined) {
+            enableProviderNameSearch = config.enableProviderNameSearch !== false;
           }
         }
-      }
-    });
-  }
-  
-  // Debug: Log what we're reading from each div
-  console.log('=== CONFIGURATION READING DEBUG ===');
-  console.log('Raw div contents:');
-  for (let i = 1; i <= 11; i++) {
-    const div = block.querySelector(`:scope > div:nth-child(${i}) > div`);
-    console.log(`Div ${i}:`, div?.textContent?.trim() || 'empty');
-  }
-  
-  console.log('=== TITLE AND SUBTITLE DEBUG ===');
-  console.log('Title from div 1:', block.querySelector(':scope > div:nth-child(1) > div')?.textContent?.trim());
-  console.log('Subtitle from div 2:', block.querySelector(':scope > div:nth-child(2) > div')?.textContent?.trim());
-  console.log('Final title value:', title);
-  console.log('Final subtitle value:', subtitle);
-  console.log('Final contentFragmentFolder value:', contentFragmentFolder);
-  
-  // Special handling: If we have a DAM JSON path but dataSourceType is not dam-json, fix it
-  if (damJsonPath && damJsonPath !== '' && dataSourceType !== 'dam-json' && !contentFragmentFolder) {
-    console.log('=== FIXING DATA SOURCE TYPE ===');
-    console.log('Found DAM JSON path but dataSourceType is not dam-json, fixing...');
-    dataSourceType = 'dam-json';
-  }
-  
-  console.log('Find Doctor Configuration:', {
-    title,
-    subtitle,
-    layout,
-    dataSourceType,
-    damJsonPath,
-    contentFragmentFolder,
-    apiUrl,
-    staticJsonPath,
-    enableLocationSearch,
-    enableSpecialtyFilter,
-    enableProviderNameSearch
-  });
-  
-  // ✅ Clear out all config rows immediately so they don't render on page
-  block.innerHTML = '';
-  block.className = `find-doctor ${layout}`;
-  
-  // Create config object for compatibility
-  const config = {
-    title,
-    subtitle,
-    layout,
-    dataSourceType,
-    damJsonPath,
-    contentFragmentFolder,
-    apiUrl,
-    staticJsonPath,
-    enableLocationSearch,
-    enableSpecialtyFilter,
-    enableProviderNameSearch
-  };
-  
-  // Create header
-  const header = createElement('div', 'find-doctor-header');
-  const dataSourceInfo = getDataSourceInfo(config);
-  
-  console.log('=== HEADER CREATION DEBUG ===');
-  console.log('Creating header with title:', title);
-  console.log('Creating header with subtitle:', subtitle);
-  console.log('Data source info:', dataSourceInfo);
-  
-  header.innerHTML = `
-    <h2 class="find-doctor-title">${title}</h2>
-    <p class="find-doctor-subtitle">${subtitle}</p>
-    <div class="data-source-info">
-      <small>Data Source: ${dataSourceInfo}</small>
-    </div>
-  `;
-  block.appendChild(header);
-  
-  console.log('Header HTML created:', header.innerHTML);
-  
-  // Create results container and add to DOM
-  const resultsContainer = createElement('div', 'doctor-results');
-  block.appendChild(resultsContainer);
-  
-  // Show loading state while fetching data
-  resultsContainer.innerHTML = '<div class="loading-state">Loading doctors...</div>';
-  
-  // Load doctor data first
-  let doctors = await fetchDoctorData(config);
-  
-  // Create search form with dynamic specialties from loaded doctor data
-  const searchForm = createSearchForm(config, doctors);
-  // Insert search form before results container
-  block.insertBefore(searchForm, resultsContainer);
-  
-  // Add loading styles
-  const loadingStyle = document.createElement('style');
-  loadingStyle.textContent = `
-    .loading-state {
-      text-align: center;
-      padding: 2rem;
-      color: var(--text-color-secondary, #666);
-      font-size: 1.1rem;
-    }
-    .error-state {
-      text-align: center;
-      padding: 2rem;
-      color: var(--error-color, #dc3545);
-      background: var(--error-background, #f8d7da);
-      border: 1px solid var(--error-border, #f5c6cb);
-      border-radius: 8px;
-      margin: 1rem 0;
-    }
-  `;
-  document.head.appendChild(loadingStyle);
-  
-  // Initialize filters
-  const filters = {
-    nameSearch: '',
-    specialty: '',
-    location: ''
-  };
-  
-  // Get form elements
-  const nameInput = block.querySelector('.provider-name-search');
-  const specialtySelect = block.querySelector('.specialty-filter');
-  const locationInput = block.querySelector('.location-search');
-  const locationButton = block.querySelector('.location-button');
-  
-  // Search functionality
-  const performSearch = debounce(() => {
-    const filteredDoctors = filterDoctors(doctors, filters);
-    renderResults(filteredDoctors, resultsContainer);
-  }, 300);
-  
-  // Event listeners
-  if (nameInput) {
-    nameInput.addEventListener('input', (e) => {
-      filters.nameSearch = e.target.value;
-      performSearch();
-    });
-  }
-  
-  if (specialtySelect) {
-    specialtySelect.addEventListener('change', (e) => {
-      filters.specialty = e.target.value;
-      performSearch();
-    });
-  }
-  
-  if (locationInput) {
-    locationInput.addEventListener('input', (e) => {
-      filters.location = e.target.value;
-      performSearch();
-    });
-  }
-  
-  // Location button functionality
-  if (locationButton) {
-    locationButton.addEventListener('click', async () => {
-      try {
-        locationButton.textContent = '📍';
-        locationButton.disabled = true;
-        
-        const position = await getCurrentLocation();
-        
-        // In a real implementation, you would reverse geocode the coordinates
-        // For now, we'll just show a success message
-        locationInput.value = 'Current location detected';
-        filters.location = 'Current location detected';
-        performSearch();
-        
-        locationButton.textContent = '📍';
-        setTimeout(() => {
-          locationButton.textContent = '📍';
-          locationButton.disabled = false;
-        }, 2000);
-        
       } catch (error) {
-        console.error('Error getting location:', error);
-        locationButton.textContent = '📍';
-        setTimeout(() => {
+        console.log('readBlockConfig failed:', error);
+      }
+      
+      // Additional fallback: Try reading from all divs to see what's available
+      console.log('Trying alternative selectors...');
+      const allDivs = block.querySelectorAll(':scope > div');
+      allDivs.forEach((div, index) => {
+        const text = div.textContent?.trim();
+        if (text && text !== '') {
+          console.log(`Div ${index + 1} content:`, text);
+        }
+      });
+      
+      // Try reading title and subtitle from any div that might contain them
+      const allTextDivs = block.querySelectorAll(':scope > div > div');
+      allTextDivs.forEach((div, index) => {
+        const text = div.textContent?.trim();
+        if (text && text !== '') {
+          console.log(`Text div ${index + 1}:`, text);
+          // Guard against picking DAM paths or URLs as titles
+          const looksLikePath = text.startsWith('/content/') || text.includes('/') || text.includes(':');
+          // If we find text that looks like a proper title/subtitle, use it
+          if (!looksLikePath && text.length > 2 && text.length < 120 && !text.includes('dataSourceType') && !text.includes('dam-json')) {
+            if (title === 'Find a Doctor' && /doctor/i.test(text)) {
+              title = text;
+              console.log('Found title in fallback:', title);
+            } else if (subtitle === 'Search for healthcare providers in your area' && /search|provider|healthcare/i.test(text)) {
+              subtitle = text;
+              console.log('Found subtitle in fallback:', subtitle);
+            }
+          }
+        }
+      });
+    }
+    
+    // Debug: Log what we're reading from each div
+    console.log('=== CONFIGURATION READING DEBUG ===');
+    console.log('Raw div contents:');
+    for (let i = 1; i <= 11; i++) {
+      const div = block.querySelector(`:scope > div:nth-child(${i}) > div`);
+      console.log(`Div ${i}:`, div?.textContent?.trim() || 'empty');
+    }
+    
+    console.log('=== TITLE AND SUBTITLE DEBUG ===');
+    console.log('Title from div 1:', block.querySelector(':scope > div:nth-child(1) > div')?.textContent?.trim());
+    console.log('Subtitle from div 2:', block.querySelector(':scope > div:nth-child(2) > div')?.textContent?.trim());
+    console.log('Final title value:', title);
+    console.log('Final subtitle value:', subtitle);
+    console.log('Final contentFragmentFolder value:', contentFragmentFolder);
+    
+    // Special handling: If we have a DAM JSON path but dataSourceType is not dam-json, fix it
+    if (damJsonPath && damJsonPath !== '' && dataSourceType !== 'dam-json' && !contentFragmentFolder) {
+      console.log('=== FIXING DATA SOURCE TYPE ===');
+      console.log('Found DAM JSON path but dataSourceType is not dam-json, fixing...');
+      dataSourceType = 'dam-json';
+    }
+    
+    console.log('Find Doctor Configuration:', {
+      title,
+      subtitle,
+      layout,
+      dataSourceType,
+      damJsonPath,
+      contentFragmentFolder,
+      apiUrl,
+      staticJsonPath,
+      enableLocationSearch,
+      enableSpecialtyFilter,
+      enableProviderNameSearch
+    });
+    
+    // Create config object for compatibility
+    const config = {
+      title,
+      subtitle,
+      layout,
+      dataSourceType,
+      damJsonPath,
+      contentFragmentFolder,
+      apiUrl,
+      staticJsonPath,
+      enableLocationSearch,
+      enableSpecialtyFilter,
+      enableProviderNameSearch
+    };
+    
+    // Hide configuration rows after reading them (same approach as search block)
+    try {
+      const configRows = [];
+      for (let i = 1; i <= 11; i++) {
+        const row = block.querySelector(`:scope > div:nth-child(${i})`);
+        if (row) configRows.push(row);
+      }
+      configRows.forEach((row) => { if (row) row.style.display = 'none'; });
+    } catch (e) {
+      console.log('[find-doctor] config/hide rows error', e);
+    }
+    
+    // Clear everything before re-render
+    block.innerHTML = '';
+    block.className = `find-doctor ${layout}`;
+    
+    // --- Build UI ---
+    const header = createElement('div', 'find-doctor-header');
+    const dataSourceInfo = getDataSourceInfo(config);
+    
+    console.log('=== HEADER CREATION DEBUG ===');
+    console.log('Creating header with title:', title);
+    console.log('Creating header with subtitle:', subtitle);
+    console.log('Data source info:', dataSourceInfo);
+    
+    header.innerHTML = `
+      <h2 class="find-doctor-title">${title}</h2>
+      <p class="find-doctor-subtitle">${subtitle}</p>
+      <div class="data-source-info">
+        <small>Data Source: ${dataSourceInfo}</small>
+      </div>
+    `;
+    block.appendChild(header);
+    
+    console.log('Header HTML created:', header.innerHTML);
+    
+    const resultsContainer = createElement('div', 'doctor-results');
+    resultsContainer.innerHTML = '<div class="loading-state">Loading doctors...</div>';
+    block.appendChild(resultsContainer);
+
+    // Load data
+    let doctors = await fetchDoctorData(config);
+
+    // Build search form
+    const searchForm = createSearchForm(config, doctors);
+    block.insertBefore(searchForm, resultsContainer);
+
+    // Add loading styles (only if not already added)
+    if (!document.querySelector('#find-doctor-loading-styles')) {
+      const loadingStyle = document.createElement('style');
+      loadingStyle.id = 'find-doctor-loading-styles';
+      loadingStyle.textContent = `
+        .loading-state {
+          text-align: center;
+          padding: 2rem;
+          color: var(--text-color-secondary, #666);
+          font-size: 1.1rem;
+        }
+        .error-state {
+          text-align: center;
+          padding: 2rem;
+          color: var(--error-color, #dc3545);
+          background: var(--error-background, #f8d7da);
+          border: 1px solid var(--error-border, #f5c6cb);
+          border-radius: 8px;
+          margin: 1rem 0;
+        }
+      `;
+      document.head.appendChild(loadingStyle);
+    }
+
+    // Hook up filters + listeners
+    const filters = { nameSearch: '', specialty: '', location: '' };
+    const performSearch = debounce(() => {
+      const filteredDoctors = filterDoctors(doctors, filters);
+      renderResults(filteredDoctors, resultsContainer);
+    }, 300);
+
+    const nameInput = block.querySelector('.provider-name-search');
+    if (nameInput) {
+      nameInput.addEventListener('input', (e) => {
+        filters.nameSearch = e.target.value;
+        performSearch();
+      });
+    }
+
+    const specialtySelect = block.querySelector('.specialty-filter');
+    if (specialtySelect) {
+      specialtySelect.addEventListener('change', (e) => {
+        filters.specialty = e.target.value;
+        performSearch();
+      });
+    }
+
+    const locationInput = block.querySelector('.location-search');
+    if (locationInput) {
+      locationInput.addEventListener('input', (e) => {
+        filters.location = e.target.value;
+        performSearch();
+      });
+    }
+
+    // Location button functionality
+    const locationButton = block.querySelector('.location-button');
+    if (locationButton) {
+      locationButton.addEventListener('click', async () => {
+        try {
           locationButton.textContent = '📍';
-          locationButton.disabled = false;
-        }, 2000);
+          locationButton.disabled = true;
+          
+          const position = await getCurrentLocation();
+          
+          // In a real implementation, you would reverse geocode the coordinates
+          // For now, we'll just show a success message
+          locationInput.value = 'Current location detected';
+          filters.location = 'Current location detected';
+          performSearch();
+          
+          locationButton.textContent = '📍';
+          setTimeout(() => {
+            locationButton.textContent = '📍';
+            locationButton.disabled = false;
+          }, 2000);
+          
+        } catch (error) {
+          console.error('Error getting location:', error);
+          locationButton.textContent = '📍';
+          setTimeout(() => {
+            locationButton.textContent = '📍';
+            locationButton.disabled = false;
+          }, 2000);
+        }
+      });
+    }
+
+    // Book appointment functionality
+    block.addEventListener('click', (e) => {
+      if (e.target.classList.contains('book-appointment-btn')) {
+        const doctorId = e.target.dataset.doctorId;
+        const doctor = doctors.find(d => d.id === doctorId);
+        
+        if (doctor) {
+          // In a real implementation, this would open a booking modal or redirect to booking page
+          alert(`Booking appointment with ${doctor.name}\n\nPhone: ${doctor.phone}\nEmail: ${doctor.email}`);
+        }
       }
     });
+
+    // Initial render
+    renderResults(doctors, resultsContainer);
   }
-  
-  // Book appointment functionality
-  block.addEventListener('click', (e) => {
-    if (e.target.classList.contains('book-appointment-btn')) {
-      const doctorId = e.target.dataset.doctorId;
-      const doctor = doctors.find(d => d.id === doctorId);
-      
-      if (doctor) {
-        // In a real implementation, this would open a booking modal or redirect to booking page
-        alert(`Booking appointment with ${doctor.name}\n\nPhone: ${doctor.phone}\nEmail: ${doctor.email}`);
-      }
-    }
+
+  // Run first render
+  await render();
+
+  // ✅ Auto re-render on config changes
+  const observer = new MutationObserver(() => {
+    console.log('🔄 Config change detected, re-rendering find-a-doctor block...');
+    // Debounce so we don't re-render too often
+    clearTimeout(block._rerenderTimeout);
+    block._rerenderTimeout = setTimeout(() => render(), 300);
   });
-  
-  // Initial render
-  renderResults(doctors, resultsContainer);
+
+  observer.observe(block, { childList: true, subtree: true, characterData: true });
 }
