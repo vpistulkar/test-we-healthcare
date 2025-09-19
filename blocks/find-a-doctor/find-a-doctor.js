@@ -998,14 +998,47 @@ export default async function decorate(block) {
 
   // Debug: Add Universal Editor event listeners to understand what's happening
   const debugUEEvents = (eventName) => {
-    block.addEventListener(eventName, (event) => {
-      console.log(`🔍 Find-a-doctor block received ${eventName} event:`, event.detail);
-      console.log('Block resource:', block.getAttribute('data-aue-resource'));
-      console.log('Event resource:', event.detail?.request?.target?.resource);
-    });
+    document.querySelector('main').addEventListener(eventName, (event) => {
+      console.log(`🔍 MAIN received ${eventName} event:`, event.detail);
+      
+      const resource = event.detail?.request?.target?.resource;
+      const blockResource = block.getAttribute('data-aue-resource');
+      console.log('Event resource:', resource);
+      console.log('Block resource:', blockResource);
+      console.log('Resources match:', resource === blockResource);
+      
+      if (resource === blockResource) {
+        console.log('🎯 This event is for our find-a-doctor block!');
+        
+        // Debug the update content
+        const updates = event.detail?.response?.updates;
+        if (updates && updates.length > 0) {
+          const { content } = updates[0];
+          console.log('Update content received:', content?.substring(0, 500) + '...');
+          
+          // Parse and check if new block exists
+          const parsedUpdate = new DOMParser().parseFromString(content, 'text/html');
+          const newBlock = parsedUpdate.querySelector(`[data-aue-resource="${blockResource}"]`);
+          console.log('New block found in update:', !!newBlock);
+          if (newBlock) {
+            console.log('New block HTML:', newBlock.outerHTML.substring(0, 300) + '...');
+          } else {
+            console.log('❌ No new block found - this is why reload fails!');
+            console.log('Available elements with data-aue-resource:', 
+              Array.from(parsedUpdate.querySelectorAll('[data-aue-resource]')).map(el => el.getAttribute('data-aue-resource')));
+            
+            // Fallback: Force page reload after a short delay to let AEM finish processing
+            console.log('🔄 Forcing page reload as fallback...');
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000);
+          }
+        }
+      }
+    }, true); // Use capture phase to catch before stopPropagation
   };
 
-  // Listen for Universal Editor events
+  // Listen for Universal Editor events at main level
   ['aue:content-patch', 'aue:content-update', 'aue:content-add', 'aue:content-move', 'aue:content-remove'].forEach(debugUEEvents);
   
   console.log('✅ Find-a-doctor block decoration completed');
