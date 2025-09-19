@@ -631,6 +631,17 @@ export default async function decorate(block) {
   const enableSpecialtyFilter = block.querySelector(':scope div:nth-child(10) > div')?.textContent?.trim() !== 'false';
   const enableProviderNameSearch = block.querySelector(':scope div:nth-child(11) > div')?.textContent?.trim() !== 'false';
 
+  // Hide config rows (like cards block)
+  for (let i = 1; i <= 11; i++) {
+    const row = block.querySelector(`:scope > div:nth-child(${i})`);
+    if (row) {
+      row.style.display = 'none';
+    }
+  }
+
+  // Set layout class
+  block.className = `find-doctor ${layout}`;
+
   // Create config object for compatibility
   const config = {
     title,
