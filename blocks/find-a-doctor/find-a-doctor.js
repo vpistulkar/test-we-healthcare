@@ -613,8 +613,10 @@ function createSearchForm(config, doctors = []) {
 }
 
 export default async function decorate(block) {
-  // Simple debug log
-  console.log('🏥 Find-a-doctor block decorating...');
+  // Debug log with timestamp to track re-decoration
+  const timestamp = new Date().toLocaleTimeString();
+  console.log(`🏥 Find-a-doctor block decorating at ${timestamp}`);
+  console.log('Block data-aue-resource:', block.getAttribute('data-aue-resource'));
   
   // --- Read Configuration ---
   let title = 'Find a Doctor';
@@ -811,12 +813,12 @@ export default async function decorate(block) {
       enableProviderNameSearch
     };
     
-  // Clear everything and set layout class
+  // Clear everything and set layout class (like content-fragment block)
   block.innerHTML = '';
   block.className = `find-doctor ${layout}`;
     
-    // --- Build UI ---
-    const header = createElement('div', 'find-doctor-header');
+  // --- Build UI ---
+  const header = createElement('div', 'find-doctor-header');
     const dataSourceInfo = getDataSourceInfo(config);
     
     console.log('=== HEADER CREATION DEBUG ===');
@@ -950,5 +952,5 @@ export default async function decorate(block) {
   // Initial render
   renderResults(doctors, resultsContainer);
   
-  console.log('✅ Find-a-doctor block decoration completed');
+  console.log(`✅ Find-a-doctor block decoration completed at ${timestamp}`);
 }
