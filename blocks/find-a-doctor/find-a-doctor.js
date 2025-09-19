@@ -848,4 +848,34 @@ export default async function decorate(block) {
   renderResults(doctors, resultsContainer);
   
   console.log(`✅ Find-a-doctor block decoration completed at ${timestamp}`);
+  
+  // Add smart reload fallback for Universal Editor changes
+  const blockResource = block.getAttribute('data-aue-resource');
+  if (blockResource) {
+    // Track the current timestamp to detect if we get reloaded
+    block._decorationTimestamp = timestamp;
+    
+    const handleUEEvent = (event) => {
+      const eventResource = event.detail?.request?.target?.resource;
+      if (eventResource === blockResource) {
+        console.log('🔄 Config change detected for find-a-doctor block');
+        
+        // Give AEM 2 seconds to automatically reload the block
+        setTimeout(() => {
+          const currentBlock = document.querySelector(`[data-aue-resource="${blockResource}"]`);
+          if (currentBlock && currentBlock._decorationTimestamp === timestamp) {
+            // Block wasn't reloaded automatically, force reload
+            console.log('⚠️ Block not auto-reloaded, forcing page refresh...');
+            window.location.reload();
+          } else {
+            console.log('✅ Block was auto-reloaded successfully');
+          }
+        }, 2000);
+      }
+    };
+    
+    // Listen for Universal Editor events  
+    document.querySelector('main')?.addEventListener('aue:content-patch', handleUEEvent);
+    document.querySelector('main')?.addEventListener('aue:content-update', handleUEEvent);
+  }
 }
