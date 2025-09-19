@@ -677,13 +677,11 @@ export default async function decorate(block) {
     }
   });
 
-  // Hide config rows (only the ones that have content)
-  for (let i = 1; i <= 9; i++) {
-    const row = block.querySelector(`:scope > div:nth-child(${i})`);
-    if (row) {
-      row.style.display = 'none';
-    }
-  }
+  // Hide config rows but keep them in DOM (like cards block)
+  const configRows = Array.from(block.children);
+  configRows.forEach((row) => {
+    row.style.display = 'none';
+  });
 
   // Set layout class
   block.className = `find-doctor ${layout}`;
@@ -849,33 +847,24 @@ export default async function decorate(block) {
   
   console.log(`✅ Find-a-doctor block decoration completed at ${timestamp}`);
   
-  // Add smart reload fallback for Universal Editor changes
+  // Add Universal Editor auto-reload support
   const blockResource = block.getAttribute('data-aue-resource');
   if (blockResource) {
-    // Track the current timestamp to detect if we get reloaded
-    block._decorationTimestamp = timestamp;
-    
     const handleUEEvent = (event) => {
       const eventResource = event.detail?.request?.target?.resource;
       if (eventResource === blockResource) {
-        console.log('🔄 Config change detected for find-a-doctor block');
-        
-        // Give AEM 2 seconds to automatically reload the block
+        console.log('🔄 Find-a-doctor config change detected, will reload in 1 second...');
         setTimeout(() => {
-          const currentBlock = document.querySelector(`[data-aue-resource="${blockResource}"]`);
-          if (currentBlock && currentBlock._decorationTimestamp === timestamp) {
-            // Block wasn't reloaded automatically, force reload
-            console.log('⚠️ Block not auto-reloaded, forcing page refresh...');
-            window.location.reload();
-          } else {
-            console.log('✅ Block was auto-reloaded successfully');
-          }
-        }, 2000);
+          window.location.reload();
+        }, 1000);
       }
     };
     
-    // Listen for Universal Editor events  
-    document.querySelector('main')?.addEventListener('aue:content-patch', handleUEEvent);
-    document.querySelector('main')?.addEventListener('aue:content-update', handleUEEvent);
+    // Listen for Universal Editor events (only add listener once)
+    if (!block._ueListenerAdded) {
+      document.querySelector('main')?.addEventListener('aue:content-patch', handleUEEvent);
+      document.querySelector('main')?.addEventListener('aue:content-update', handleUEEvent);
+      block._ueListenerAdded = true;
+    }
   }
 }
