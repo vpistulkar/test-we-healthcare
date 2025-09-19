@@ -625,21 +625,21 @@ export default async function decorate(block) {
     console.log(`Position ${i}:`, div?.textContent?.trim() || 'empty');
   }
   
-  // Read configuration directly from block structure (like content-fragment)
-  const title = block.querySelector(':scope div:nth-child(1) > div')?.textContent?.trim() || 'Find a Doctor';
-  const subtitle = block.querySelector(':scope div:nth-child(2) > div')?.textContent?.trim() || 'Search for healthcare providers in your area';
-  const layout = block.querySelector(':scope div:nth-child(3) > div')?.textContent?.trim() || 'default';
-  const dataSourceType = block.querySelector(':scope div:nth-child(4) > div')?.textContent?.trim() || 'json';
-  const damJsonPath = block.querySelector(':scope div:nth-child(5) > div')?.textContent?.trim() || '';
-  const contentFragmentFolder = block.querySelector(':scope div:nth-child(6) > div')?.textContent?.trim() || '';
-  const apiUrl = block.querySelector(':scope div:nth-child(7) > div')?.textContent?.trim() || '';
-  const staticJsonPath = block.querySelector(':scope div:nth-child(8) > div')?.textContent?.trim() || '/data/doctors.json';
-  const enableLocationSearch = block.querySelector(':scope div:nth-child(9) > div')?.textContent?.trim() !== 'false';
-  const enableSpecialtyFilter = block.querySelector(':scope div:nth-child(10) > div')?.textContent?.trim() !== 'false';
-  const enableProviderNameSearch = block.querySelector(':scope div:nth-child(11) > div')?.textContent?.trim() !== 'false';
+  // Read configuration based on actual positions found in debug
+  const title = 'Find a Doctor'; // Will be set by Universal Editor properties
+  const subtitle = 'Search for healthcare providers in your area'; // Will be set by Universal Editor properties  
+  const layout = block.querySelector(':scope div:nth-child(1) > div')?.textContent?.trim() || 'default';
+  const dataSourceType = block.querySelector(':scope div:nth-child(2) > div')?.textContent?.trim() || 'json';
+  const contentFragmentFolder = block.querySelector(':scope div:nth-child(3) > div')?.textContent?.trim() || '';
+  const damJsonPath = block.querySelector(':scope div:nth-child(4) > div')?.textContent?.trim() || '';
+  const apiUrl = block.querySelector(':scope div:nth-child(5) > div')?.textContent?.trim() || '';
+  const staticJsonPath = block.querySelector(':scope div:nth-child(6) > div')?.textContent?.trim() || '/data/doctors.json';
+  const enableLocationSearch = block.querySelector(':scope div:nth-child(7) > div')?.textContent?.trim() !== 'false';
+  const enableSpecialtyFilter = block.querySelector(':scope div:nth-child(8) > div')?.textContent?.trim() !== 'false';
+  const enableProviderNameSearch = block.querySelector(':scope div:nth-child(9) > div')?.textContent?.trim() !== 'false';
 
-  // Hide config rows (like cards block)
-  for (let i = 1; i <= 11; i++) {
+  // Hide config rows (only the ones that have content)
+  for (let i = 1; i <= 9; i++) {
     const row = block.querySelector(`:scope > div:nth-child(${i})`);
     if (row) {
       row.style.display = 'none';
