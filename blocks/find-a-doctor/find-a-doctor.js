@@ -618,6 +618,13 @@ export default async function decorate(block) {
   console.log(`🏥 Find-a-doctor block decorating at ${timestamp}`);
   console.log('Block data-aue-resource:', block.getAttribute('data-aue-resource'));
   
+  // Debug: Log all div contents to see what we're reading
+  console.log('=== CONFIG DEBUG ===');
+  for (let i = 1; i <= 11; i++) {
+    const div = block.querySelector(`:scope div:nth-child(${i}) > div`);
+    console.log(`Position ${i}:`, div?.textContent?.trim() || 'empty');
+  }
+  
   // Read configuration directly from block structure (like content-fragment)
   const title = block.querySelector(':scope div:nth-child(1) > div')?.textContent?.trim() || 'Find a Doctor';
   const subtitle = block.querySelector(':scope div:nth-child(2) > div')?.textContent?.trim() || 'Search for healthcare providers in your area';
@@ -656,6 +663,15 @@ export default async function decorate(block) {
     enableSpecialtyFilter,
     enableProviderNameSearch
   };
+  
+  console.log('=== FINAL CONFIG VALUES ===');
+  console.log('Title:', title);
+  console.log('Subtitle:', subtitle);
+  console.log('Layout:', layout);
+  console.log('Data Source Type:', dataSourceType);
+  console.log('Content Fragment Folder:', contentFragmentFolder);
+  console.log('DAM JSON Path:', damJsonPath);
+  console.log('Static JSON Path:', staticJsonPath);
     
   // --- Build UI ---
   const header = createElement('div', 'find-doctor-header');
