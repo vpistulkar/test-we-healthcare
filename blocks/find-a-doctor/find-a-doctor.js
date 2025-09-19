@@ -821,36 +821,20 @@ export default async function decorate(block) {
       enableProviderNameSearch
     };
     
-    // Clear everything before re-render (but keep config rows for MutationObserver)
-    // We'll hide config rows visually but keep them in DOM for change detection
-    const configRows = [];
+    // Hide configuration rows after reading them (same approach as search block)
     try {
+      const configRows = [];
       for (let i = 1; i <= 11; i++) {
         const row = block.querySelector(`:scope > div:nth-child(${i})`);
         if (row) configRows.push(row);
       }
+      configRows.forEach((row) => { if (row) row.style.display = 'none'; });
     } catch (e) {
-      console.log('[find-doctor] config rows detection error', e);
+      console.log('[find-doctor] config/hide rows error', e);
     }
     
-    // Clear only the non-config content
-    const children = Array.from(block.children);
-    children.forEach(child => {
-      if (!configRows.includes(child)) {
-        child.remove();
-      }
-    });
-    
-    // Hide config rows visually but keep them in DOM for MutationObserver
-    configRows.forEach((row) => { 
-      if (row) {
-        row.style.position = 'absolute';
-        row.style.visibility = 'hidden';
-        row.style.pointerEvents = 'none';
-        row.style.zIndex = '-1';
-      }
-    });
-    
+    // Clear everything before re-render
+    block.innerHTML = '';
     block.className = `find-doctor ${layout}`;
     
     // --- Build UI ---
@@ -993,78 +977,12 @@ export default async function decorate(block) {
   await render();
 
   // ✅ Auto re-render on config changes
-  const observer = new MutationObserver((mutations) => {
-    console.log('🔍 MutationObserver triggered with', mutations.length, 'mutations');
-    
-    // Check if any mutations affect config rows (first 11 child divs)
-    const hasConfigChange = mutations.some(mutation => {
-      console.log('  Mutation type:', mutation.type, 'target:', mutation.target.tagName, mutation.target.className);
-      
-      if (mutation.type === 'childList') {
-        // Check if added/removed nodes are config rows
-        const affectsConfig = [...mutation.addedNodes, ...mutation.removedNodes].some(node => {
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            const parent = node.parentElement || mutation.target;
-            const configRowIndex = Array.from(parent.children).indexOf(node);
-            console.log('    childList change - configRowIndex:', configRowIndex);
-            return configRowIndex < 11; // First 11 rows are config
-          }
-          return false;
-        });
-        return affectsConfig;
-      } else if (mutation.type === 'characterData') {
-        // Check if text changes are in config rows
-        let current = mutation.target;
-        while (current && current !== block) {
-          if (current.parentElement === block) {
-            const rowIndex = Array.from(block.children).indexOf(current);
-            console.log('    characterData change - rowIndex:', rowIndex);
-            return rowIndex < 11; // First 11 rows are config
-          }
-          current = current.parentElement;
-        }
-      }
-      return false;
-    });
-
-    if (hasConfigChange) {
-      console.log('🔄 Config change detected, re-rendering find-a-doctor block...');
-      // Debounce so we don't re-render too often
-      clearTimeout(block._rerenderTimeout);
-      block._rerenderTimeout = setTimeout(() => render(), 300);
-    } else {
-      console.log('  No config changes detected, ignoring mutation');
-    }
+  const observer = new MutationObserver(() => {
+    console.log('🔄 Config change detected, re-rendering find-a-doctor block...');
+    // Debounce so we don't re-render too often
+    clearTimeout(block._rerenderTimeout);
+    block._rerenderTimeout = setTimeout(() => render(), 300);
   });
 
-  observer.observe(block, { 
-    childList: true, 
-    subtree: true, 
-    characterData: true,
-    attributes: false // We don't need to watch attribute changes
-  });
-
-  // Fallback: Also add a simple observer that triggers on ANY change in the first few rows
-  // This is a backup in case the sophisticated detection above doesn't work
-  const configRows = Array.from(block.children).slice(0, 11);
-  configRows.forEach((row, index) => {
-    if (row) {
-      const simpleObserver = new MutationObserver(() => {
-        console.log(`🔄 Simple observer detected change in config row ${index + 1}, re-rendering...`);
-        clearTimeout(block._rerenderTimeout);
-        block._rerenderTimeout = setTimeout(() => render(), 300);
-      });
-      
-      simpleObserver.observe(row, {
-        childList: true,
-        subtree: true,
-        characterData: true,
-        attributes: true
-      });
-      
-      // Store observer references for cleanup if needed
-      if (!block._configObservers) block._configObservers = [];
-      block._configObservers.push(simpleObserver);
-    }
-  });
+  observer.observe(block, { childList: true, subtree: true, characterData: true });
 }
