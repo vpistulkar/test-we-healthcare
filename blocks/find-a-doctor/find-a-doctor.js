@@ -625,18 +625,57 @@ export default async function decorate(block) {
     console.log(`Position ${i}:`, div?.textContent?.trim() || 'empty');
   }
   
-  // Read configuration based on actual positions found in debug
-  const title = 'Find a Doctor'; // Will be set by Universal Editor properties
-  const subtitle = 'Search for healthcare providers in your area'; // Will be set by Universal Editor properties  
-  const layout = block.querySelector(':scope div:nth-child(1) > div')?.textContent?.trim() || 'default';
-  const dataSourceType = block.querySelector(':scope div:nth-child(2) > div')?.textContent?.trim() || 'json';
-  const contentFragmentFolder = block.querySelector(':scope div:nth-child(3) > div')?.textContent?.trim() || '';
-  const damJsonPath = block.querySelector(':scope div:nth-child(4) > div')?.textContent?.trim() || '';
-  const apiUrl = block.querySelector(':scope div:nth-child(5) > div')?.textContent?.trim() || '';
-  const staticJsonPath = block.querySelector(':scope div:nth-child(6) > div')?.textContent?.trim() || '/data/doctors.json';
-  const enableLocationSearch = block.querySelector(':scope div:nth-child(7) > div')?.textContent?.trim() !== 'false';
-  const enableSpecialtyFilter = block.querySelector(':scope div:nth-child(8) > div')?.textContent?.trim() !== 'false';
-  const enableProviderNameSearch = block.querySelector(':scope div:nth-child(9) > div')?.textContent?.trim() !== 'false';
+  // Read configuration using key-based approach (works with Universal Editor)
+  let title = 'Find a Doctor';
+  let subtitle = 'Search for healthcare providers in your area';
+  let layout = 'default';
+  let dataSourceType = 'json';
+  let damJsonPath = '';
+  let contentFragmentFolder = '';
+  let apiUrl = '';
+  let staticJsonPath = '/data/doctors.json';
+  let enableLocationSearch = true;
+  let enableSpecialtyFilter = true;
+  let enableProviderNameSearch = true;
+  
+  // Parse config from block structure (key-value pairs)
+  const rows = Array.from(block.querySelectorAll(':scope > div'));
+  rows.forEach((row) => {
+    const cells = row.querySelectorAll(':scope > div');
+    if (cells.length < 2) return;
+    
+    const key = cells[0].textContent?.trim()?.toLowerCase();
+    const valueCell = cells[1];
+    const link = valueCell.querySelector('a');
+    const value = (link?.getAttribute('title') || link?.textContent || valueCell.textContent || '').trim();
+    
+    if (!key || !value) return;
+    
+    console.log(`Reading config: "${key}" = "${value}"`);
+    
+    switch (key) {
+      case 'title': title = value; break;
+      case 'subtitle': subtitle = value; break;
+      case 'layout': layout = value; break;
+      case 'layout style': layout = value; break;
+      case 'data source type': 
+      case 'datasourcetype': dataSourceType = value; break;
+      case 'content fragment folder':
+      case 'contentfragmentfolder': contentFragmentFolder = value; break;
+      case 'dam json path':
+      case 'damjsonpath': damJsonPath = value; break;
+      case 'api url':
+      case 'apiurl': apiUrl = value; break;
+      case 'static json path':
+      case 'staticjsonpath': staticJsonPath = value; break;
+      case 'enable location search':
+      case 'enablelocationsearch': enableLocationSearch = value !== 'false'; break;
+      case 'enable specialty filter':
+      case 'enablespecialtyfilter': enableSpecialtyFilter = value !== 'false'; break;
+      case 'enable provider name search':
+      case 'enableprovidernamesearch': enableProviderNameSearch = value !== 'false'; break;
+    }
+  });
 
   // Hide config rows (only the ones that have content)
   for (let i = 1; i <= 9; i++) {
@@ -648,7 +687,7 @@ export default async function decorate(block) {
 
   // Set layout class
   block.className = `find-doctor ${layout}`;
-
+  
   // Create config object for compatibility
   const config = {
     title,
@@ -681,130 +720,130 @@ export default async function decorate(block) {
   console.log('Creating header with title:', title);
   console.log('Creating header with subtitle:', subtitle);
   console.log('Data source info:', dataSourceInfo);
-    
-    header.innerHTML = `
-      <h2 class="find-doctor-title">${title}</h2>
-      <p class="find-doctor-subtitle">${subtitle}</p>
-      <div class="data-source-info">
-        <small>Data Source: ${dataSourceInfo}</small>
-      </div>
-    `;
-    block.appendChild(header);
-    
-    console.log('Header HTML created:', header.innerHTML);
-    
-    const resultsContainer = createElement('div', 'doctor-results');
+  
+  header.innerHTML = `
+    <h2 class="find-doctor-title">${title}</h2>
+    <p class="find-doctor-subtitle">${subtitle}</p>
+    <div class="data-source-info">
+      <small>Data Source: ${dataSourceInfo}</small>
+    </div>
+  `;
+  block.appendChild(header);
+  
+  console.log('Header HTML created:', header.innerHTML);
+  
+  const resultsContainer = createElement('div', 'doctor-results');
     resultsContainer.innerHTML = '<div class="loading-state">Loading doctors...</div>';
-    block.appendChild(resultsContainer);
-
+  block.appendChild(resultsContainer);
+  
     // Load data
-    let doctors = await fetchDoctorData(config);
-
+  let doctors = await fetchDoctorData(config);
+  
     // Build search form
-    const searchForm = createSearchForm(config, doctors);
-    block.insertBefore(searchForm, resultsContainer);
-
+  const searchForm = createSearchForm(config, doctors);
+  block.insertBefore(searchForm, resultsContainer);
+  
     // Add loading styles (only if not already added)
     if (!document.querySelector('#find-doctor-loading-styles')) {
-      const loadingStyle = document.createElement('style');
+  const loadingStyle = document.createElement('style');
       loadingStyle.id = 'find-doctor-loading-styles';
-      loadingStyle.textContent = `
-        .loading-state {
-          text-align: center;
-          padding: 2rem;
-          color: var(--text-color-secondary, #666);
-          font-size: 1.1rem;
-        }
-        .error-state {
-          text-align: center;
-          padding: 2rem;
-          color: var(--error-color, #dc3545);
-          background: var(--error-background, #f8d7da);
-          border: 1px solid var(--error-border, #f5c6cb);
-          border-radius: 8px;
-          margin: 1rem 0;
-        }
-      `;
-      document.head.appendChild(loadingStyle);
+  loadingStyle.textContent = `
+    .loading-state {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-color-secondary, #666);
+      font-size: 1.1rem;
+    }
+    .error-state {
+      text-align: center;
+      padding: 2rem;
+      color: var(--error-color, #dc3545);
+      background: var(--error-background, #f8d7da);
+      border: 1px solid var(--error-border, #f5c6cb);
+      border-radius: 8px;
+      margin: 1rem 0;
+    }
+  `;
+  document.head.appendChild(loadingStyle);
     }
 
     // Hook up filters + listeners
     const filters = { nameSearch: '', specialty: '', location: '' };
-    const performSearch = debounce(() => {
-      const filteredDoctors = filterDoctors(doctors, filters);
-      renderResults(filteredDoctors, resultsContainer);
-    }, 300);
-
+  const performSearch = debounce(() => {
+    const filteredDoctors = filterDoctors(doctors, filters);
+    renderResults(filteredDoctors, resultsContainer);
+  }, 300);
+  
     const nameInput = block.querySelector('.provider-name-search');
-    if (nameInput) {
-      nameInput.addEventListener('input', (e) => {
-        filters.nameSearch = e.target.value;
-        performSearch();
-      });
-    }
-
+  if (nameInput) {
+    nameInput.addEventListener('input', (e) => {
+      filters.nameSearch = e.target.value;
+      performSearch();
+    });
+  }
+  
     const specialtySelect = block.querySelector('.specialty-filter');
-    if (specialtySelect) {
-      specialtySelect.addEventListener('change', (e) => {
-        filters.specialty = e.target.value;
-        performSearch();
-      });
-    }
-
+  if (specialtySelect) {
+    specialtySelect.addEventListener('change', (e) => {
+      filters.specialty = e.target.value;
+      performSearch();
+    });
+  }
+  
     const locationInput = block.querySelector('.location-search');
-    if (locationInput) {
-      locationInput.addEventListener('input', (e) => {
-        filters.location = e.target.value;
-        performSearch();
-      });
-    }
-
-    // Location button functionality
+  if (locationInput) {
+    locationInput.addEventListener('input', (e) => {
+      filters.location = e.target.value;
+      performSearch();
+    });
+  }
+  
+  // Location button functionality
     const locationButton = block.querySelector('.location-button');
-    if (locationButton) {
-      locationButton.addEventListener('click', async () => {
-        try {
-          locationButton.textContent = '📍';
-          locationButton.disabled = true;
-          
-          const position = await getCurrentLocation();
-          
-          // In a real implementation, you would reverse geocode the coordinates
-          // For now, we'll just show a success message
-          locationInput.value = 'Current location detected';
-          filters.location = 'Current location detected';
-          performSearch();
-          
-          locationButton.textContent = '📍';
-          setTimeout(() => {
-            locationButton.textContent = '📍';
-            locationButton.disabled = false;
-          }, 2000);
-          
-        } catch (error) {
-          console.error('Error getting location:', error);
-          locationButton.textContent = '📍';
-          setTimeout(() => {
-            locationButton.textContent = '📍';
-            locationButton.disabled = false;
-          }, 2000);
-        }
-      });
-    }
-
-    // Book appointment functionality
-    block.addEventListener('click', (e) => {
-      if (e.target.classList.contains('book-appointment-btn')) {
-        const doctorId = e.target.dataset.doctorId;
-        const doctor = doctors.find(d => d.id === doctorId);
+  if (locationButton) {
+    locationButton.addEventListener('click', async () => {
+      try {
+        locationButton.textContent = '📍';
+        locationButton.disabled = true;
         
-        if (doctor) {
-          // In a real implementation, this would open a booking modal or redirect to booking page
-          alert(`Booking appointment with ${doctor.name}\n\nPhone: ${doctor.phone}\nEmail: ${doctor.email}`);
-        }
+        const position = await getCurrentLocation();
+        
+        // In a real implementation, you would reverse geocode the coordinates
+        // For now, we'll just show a success message
+        locationInput.value = 'Current location detected';
+        filters.location = 'Current location detected';
+        performSearch();
+        
+        locationButton.textContent = '📍';
+        setTimeout(() => {
+          locationButton.textContent = '📍';
+          locationButton.disabled = false;
+        }, 2000);
+        
+      } catch (error) {
+        console.error('Error getting location:', error);
+        locationButton.textContent = '📍';
+        setTimeout(() => {
+          locationButton.textContent = '📍';
+          locationButton.disabled = false;
+        }, 2000);
       }
     });
-
+  }
+  
+  // Book appointment functionality
+  block.addEventListener('click', (e) => {
+    if (e.target.classList.contains('book-appointment-btn')) {
+      const doctorId = e.target.dataset.doctorId;
+      const doctor = doctors.find(d => d.id === doctorId);
+      
+      if (doctor) {
+        // In a real implementation, this would open a booking modal or redirect to booking page
+        alert(`Booking appointment with ${doctor.name}\n\nPhone: ${doctor.phone}\nEmail: ${doctor.email}`);
+      }
+    }
+  });
+  
   // Initial render
   renderResults(doctors, resultsContainer);
   
