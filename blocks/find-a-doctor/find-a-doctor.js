@@ -617,6 +617,8 @@ export default async function decorate(block) {
   console.log('=== BLOCK STRUCTURE DEBUG ===');
   console.log('Block HTML before processing:', block.innerHTML);
   console.log('Block children count:', block.children.length);
+  console.log('Block attributes:', Array.from(block.attributes).map(attr => `${attr.name}="${attr.value}"`));
+  console.log('Block data-aue-resource:', block.getAttribute('data-aue-resource'));
   console.log('Block children:', Array.from(block.children).map((child, index) => ({
     index,
     tagName: child.tagName,
@@ -819,21 +821,45 @@ export default async function decorate(block) {
       enableProviderNameSearch
     };
     
-    // Hide configuration rows after reading them (same approach as search block)
-    try {
-      const configRows = [];
-      for (let i = 1; i <= 11; i++) {
-        const row = block.querySelector(`:scope > div:nth-child(${i})`);
-        if (row) configRows.push(row);
+  // Preserve config rows with Universal Editor attributes before clearing
+  const configRows = [];
+  try {
+    for (let i = 1; i <= 11; i++) {
+      const row = block.querySelector(`:scope > div:nth-child(${i})`);
+      if (row) {
+        // Clone the row to preserve it
+        const clonedRow = row.cloneNode(true);
+        configRows.push(clonedRow);
+        
+        // Add Universal Editor attributes to make config editable
+        const cells = clonedRow.querySelectorAll(':scope > div');
+        if (cells.length >= 2) {
+          const key = cells[0].textContent?.trim()?.toLowerCase();
+          if (key) {
+            // Mark the value cell as editable
+            cells[1].setAttribute('data-aue-prop', key);
+            cells[1].setAttribute('data-aue-type', 'text');
+            cells[1].setAttribute('data-aue-label', key.charAt(0).toUpperCase() + key.slice(1));
+          }
+        }
       }
-      configRows.forEach((row) => { if (row) row.style.display = 'none'; });
-    } catch (e) {
-      console.log('[find-doctor] config/hide rows error', e);
     }
+    console.log('Preserved', configRows.length, 'config rows with Universal Editor attributes');
+  } catch (e) {
+    console.log('[find-doctor] config preservation error', e);
+  }
     
-    // Clear everything before re-render
-    block.innerHTML = '';
-    block.className = `find-doctor ${layout}`;
+  // Clear everything before re-render
+  block.innerHTML = '';
+  block.className = `find-doctor ${layout}`;
+  
+  // Re-add preserved config rows but hidden
+  configRows.forEach((row) => { 
+    if (row) {
+      row.style.display = 'none';
+      block.appendChild(row);
+    }
+  });
     
     // --- Build UI ---
     const header = createElement('div', 'find-doctor-header');
@@ -969,4 +995,18 @@ export default async function decorate(block) {
 
   // Initial render
   renderResults(doctors, resultsContainer);
+
+  // Debug: Add Universal Editor event listeners to understand what's happening
+  const debugUEEvents = (eventName) => {
+    block.addEventListener(eventName, (event) => {
+      console.log(`🔍 Find-a-doctor block received ${eventName} event:`, event.detail);
+      console.log('Block resource:', block.getAttribute('data-aue-resource'));
+      console.log('Event resource:', event.detail?.request?.target?.resource);
+    });
+  };
+
+  // Listen for Universal Editor events
+  ['aue:content-patch', 'aue:content-update', 'aue:content-add', 'aue:content-move', 'aue:content-remove'].forEach(debugUEEvents);
+  
+  console.log('✅ Find-a-doctor block decoration completed');
 }
