@@ -208,7 +208,7 @@ function createDoctorCard(doctor) {
         <a href="tel:${doctor.phone}" class="contact-phone">${doctor.phone}</a>
         <a href="mailto:${doctor.email}" class="contact-email">Contact</a>
       </div>
-      <button class="book-appointment-btn" data-doctor-id="${doctor.id}">
+      <button class="book-appointment-btn" data-doctor-id="${doctor.id}" data-appointment-url="${doctor.bookAppointmentUrl || ''}">
         Book Appointment
       </button>
   
@@ -489,12 +489,38 @@ function transformGraphQLDoctorItem(item, isAuthorEnv) {
   };
 }
 
+function transformAPIDataToDoctor(apiData) {
+  // Transform API data to match our doctor structure
+  return {
+    id: apiData.id || apiData.doctorId || Math.random().toString(36).substr(2, 9),
+    name: apiData.name || apiData.doctorName || apiData.fullName || 'Dr. Unknown',
+    specialty: apiData.specialty || apiData.medicalSpecialty || apiData.speciality || 'General Medicine',
+    location: apiData.location || apiData.practiceLocation || apiData.address || 'Location not specified',
+    zipCode: apiData.zipCode || apiData.postalCode || apiData.zip || '',
+    phone: apiData.phone || apiData.phoneNumber || apiData.contactNumber || '',
+    email: apiData.email || apiData.emailAddress || apiData.contactEmail || '',
+    image: apiData.image || apiData.profileImage || apiData.photo || apiData.avatar || '/images/doctors/default-doctor.jpg',
+    rating: parseFloat(apiData.rating || apiData.starRating || apiData.score || 4.5),
+    experience: apiData.experience || apiData.yearsExperience || apiData.experienceYears || '5 years',
+    languages: Array.isArray(apiData.languages) ? apiData.languages : 
+               (apiData.languages ? apiData.languages.split(',').map(lang => lang.trim()) : ['English']),
+    acceptingNewPatients: apiData.acceptingNewPatients === true || apiData.acceptingNewPatients === 'true' || apiData.acceptingPatients === true,
+    hospital: apiData.hospital || apiData.affiliatedHospital || apiData.practiceName || apiData.clinic || 'Medical Center',
+    latitude: parseFloat(apiData.latitude || apiData.lat || 0),
+    longitude: parseFloat(apiData.longitude || apiData.lng || apiData.lon || 0),
+    bookAppointmentUrl: apiData.bookAppointmentUrl || apiData.appointmentUrl || apiData.bookingUrl || apiData.bookUrl || apiData.scheduleUrl || ''
+  };
+}
+
 async function fetchFromAPI(apiUrl) {
   try {
     const response = await fetch(apiUrl);
     if (!response.ok) throw new Error('Failed to fetch from API');
     const data = await response.json();
-    return Array.isArray(data) ? data : data.doctors || [];
+    const rawData = Array.isArray(data) ? data : data.doctors || [];
+    
+    // Transform API data to match our doctor structure
+    return rawData.map(item => transformAPIDataToDoctor(item));
   } catch (error) {
     console.error('Error fetching from API:', error);
     throw error;
@@ -531,7 +557,8 @@ function transformContentFragmentToDoctor(cfData) {
     acceptingNewPatients: cfData.acceptingNewPatients === 'true' || cfData.acceptingNewPatients === true,
     hospital: cfData.hospital || cfData.affiliatedHospital || cfData.practiceName || 'Medical Center',
     latitude: parseFloat(cfData.latitude || 0),
-    longitude: parseFloat(cfData.longitude || 0)
+    longitude: parseFloat(cfData.longitude || 0),
+    bookAppointmentUrl: cfData.bookAppointmentUrl || cfData.appointmentUrl || cfData.bookingUrl || cfData.bookUrl || ''
   };
 }
 
@@ -808,11 +835,17 @@ export default async function decorate(block) {
   block.addEventListener('click', (e) => {
     if (e.target.classList.contains('book-appointment-btn')) {
       const doctorId = e.target.dataset.doctorId;
+      const appointmentUrl = e.target.dataset.appointmentUrl;
       const doctor = doctors.find(d => d.id === doctorId);
       
       if (doctor) {
-        // In a real implementation, this would open a booking modal or redirect to booking page
+        if (appointmentUrl && appointmentUrl.trim()) {
+          // Open the appointment URL in a new tab
+          window.open(appointmentUrl, '_blank');
+        } else {
+          // Fallback: show contact information if no URL is provided
         alert(`Booking appointment with ${doctor.name}\n\nPhone: ${doctor.phone}\nEmail: ${doctor.email}`);
+        }
       }
     }
   });
