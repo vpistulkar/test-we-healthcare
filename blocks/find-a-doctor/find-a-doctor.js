@@ -16,6 +16,9 @@ function isAuthorEnvironmentSimple() {
     return false;
   }
 }
+// COMMENTED OUT - Static JSON sample data removed per user request
+// Keeping for reference only - this was the fallback data before removing static JSON support
+/*
 const SAMPLE_DOCTORS = [
   {
     id: '1',
@@ -108,6 +111,7 @@ const SAMPLE_DOCTORS = [
     hospital: 'Boston Orthopedic Center'
   }
 ];
+*/
 
 // Function to extract unique specialties from doctor data
 function getUniqueSpecialties(doctors) {
@@ -290,26 +294,15 @@ function getCurrentLocation() {
 
 async function fetchDoctorData(config) {
   try {
-    const { dataSourceType, damJsonPath, contentFragmentFolder, apiUrl, staticJsonPath } = config;
+    const { dataSourceType, contentFragmentFolder, apiUrl } = config;
     
     console.log('=== FETCH DOCTOR DATA DEBUG ===');
     console.log('Data source type:', dataSourceType);
-    console.log('DAM JSON path:', damJsonPath);
     console.log('Content Fragment folder:', contentFragmentFolder);
     console.log('API URL:', apiUrl);
-    console.log('Static JSON path:', staticJsonPath);
     console.log('Full config:', config);
     
     switch (dataSourceType) {
-      case 'dam-json':
-        if (damJsonPath) {
-          console.log('Attempting to fetch from DAM JSON:', damJsonPath);
-          return await fetchFromDAMJson(damJsonPath);
-        } else {
-          console.warn('DAM JSON path not provided, falling back to sample data');
-        }
-        break;
-        
       case 'content-fragments':
         if (contentFragmentFolder) {
           console.log('Attempting to fetch from Content Fragment folder:', contentFragmentFolder);
@@ -324,27 +317,21 @@ async function fetchDoctorData(config) {
           console.log('Attempting to fetch from API:', apiUrl);
           return await fetchFromAPI(apiUrl);
         } else {
-          console.warn('API URL not provided, falling back to sample data');
+          console.warn('API URL not provided, falling back to empty array');
         }
         break;
         
-      case 'json':
       default:
-        if (staticJsonPath) {
-          console.log('Attempting to fetch from static JSON:', staticJsonPath);
-          return await fetchFromStaticJson(staticJsonPath);
-        } else {
-          console.warn('Static JSON path not provided, falling back to sample data');
-        }
+        console.warn('Unknown data source type:', dataSourceType, 'falling back to empty array');
         break;
     }
     
-    console.log('No valid data source configured, using sample data');
-    return SAMPLE_DOCTORS; // Fallback to sample data
+    console.log('No valid data source configured, returning empty array');
+    return []; // Return empty array since static JSON support was removed
   } catch (error) {
     console.error('Error fetching doctor data:', error);
-    console.log('Falling back to sample data due to error');
-    return SAMPLE_DOCTORS; // Fallback to sample data
+    console.log('Falling back to empty array due to error');
+    return []; // Return empty array since static JSON support was removed
   }
 }
 
@@ -549,18 +536,15 @@ function transformContentFragmentToDoctor(cfData) {
 }
 
 function getDataSourceInfo(config) {
-  const { dataSourceType, damJsonPath, contentFragmentFolder, apiUrl, staticJsonPath } = config;
+  const { dataSourceType, contentFragmentFolder, apiUrl } = config;
   
   switch (dataSourceType) {
-    case 'dam-json':
-      return damJsonPath ? `DAM JSON (${damJsonPath})` : 'DAM JSON (not configured)';
     case 'content-fragments':
       return contentFragmentFolder ? `Content Fragment Folder (${contentFragmentFolder})` : 'Content Fragments (not configured)';
     case 'api':
       return apiUrl ? `External API (${apiUrl})` : 'External API (not configured)';
-    case 'json':
     default:
-      return staticJsonPath ? `Static JSON (${staticJsonPath})` : 'Sample Data (fallback)';
+      return 'Unknown data source';
   }
 }
 
@@ -629,11 +613,9 @@ export default async function decorate(block) {
   let title = 'Find a Doctor';
   let subtitle = 'Search for healthcare providers in your area';
   let layout = 'default';
-  let dataSourceType = 'json';
-  let damJsonPath = '';
+  let dataSourceType = 'content-fragments';
   let contentFragmentFolder = '';
   let apiUrl = '';
-  let staticJsonPath = '/data/doctors.json';
   let enableLocationSearch = true;
   let enableSpecialtyFilter = true;
   let enableProviderNameSearch = true;
@@ -653,28 +635,24 @@ export default async function decorate(block) {
     
     console.log(`Reading config: "${key}" = "${value}"`);
     
-    switch (key) {
-      case 'title': title = value; break;
-      case 'subtitle': subtitle = value; break;
-      case 'layout': layout = value; break;
-      case 'layout style': layout = value; break;
-      case 'data source type': 
-      case 'datasourcetype': dataSourceType = value; break;
-      case 'content fragment folder':
-      case 'contentfragmentfolder': contentFragmentFolder = value; break;
-      case 'dam json path':
-      case 'damjsonpath': damJsonPath = value; break;
-      case 'api url':
-      case 'apiurl': apiUrl = value; break;
-      case 'static json path':
-      case 'staticjsonpath': staticJsonPath = value; break;
-      case 'enable location search':
-      case 'enablelocationsearch': enableLocationSearch = value !== 'false'; break;
-      case 'enable specialty filter':
-      case 'enablespecialtyfilter': enableSpecialtyFilter = value !== 'false'; break;
-      case 'enable provider name search':
-      case 'enableprovidernamesearch': enableProviderNameSearch = value !== 'false'; break;
-    }
+            switch (key) {
+              case 'title': title = value; break;
+              case 'subtitle': subtitle = value; break;
+              case 'layout': layout = value; break;
+              case 'layout style': layout = value; break;
+              case 'data source type': 
+              case 'datasourcetype': dataSourceType = value; break;
+              case 'content fragment folder':
+              case 'contentfragmentfolder': contentFragmentFolder = value; break;
+              case 'api url':
+              case 'apiurl': apiUrl = value; break;
+              case 'enable location search':
+              case 'enablelocationsearch': enableLocationSearch = value !== 'false'; break;
+              case 'enable specialty filter':
+              case 'enablespecialtyfilter': enableSpecialtyFilter = value !== 'false'; break;
+              case 'enable provider name search':
+              case 'enableprovidernamesearch': enableProviderNameSearch = value !== 'false'; break;
+            }
   });
 
   // Hide config rows but keep them in DOM (like cards block)
@@ -692,10 +670,8 @@ export default async function decorate(block) {
     subtitle,
     layout,
     dataSourceType,
-    damJsonPath,
     contentFragmentFolder,
     apiUrl,
-    staticJsonPath,
     enableLocationSearch,
     enableSpecialtyFilter,
     enableProviderNameSearch
@@ -707,8 +683,7 @@ export default async function decorate(block) {
   console.log('Layout:', layout);
   console.log('Data Source Type:', dataSourceType);
   console.log('Content Fragment Folder:', contentFragmentFolder);
-  console.log('DAM JSON Path:', damJsonPath);
-  console.log('Static JSON Path:', staticJsonPath);
+  console.log('API URL:', apiUrl);
     
   // --- Build UI ---
   const header = createElement('div', 'find-doctor-header');
