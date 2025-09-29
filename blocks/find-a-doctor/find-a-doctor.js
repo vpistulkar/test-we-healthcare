@@ -153,6 +153,118 @@ function createElement(tag, className, content) {
   return element;
 }
 
+// Appointment popup helpers
+function ensureAppointmentStyles() {
+  if (document.getElementById('find-doctor-appointment-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'find-doctor-appointment-styles';
+  style.textContent = `
+    .fd-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 1rem;
+    }
+    .fd-modal {
+      background: #fff;
+      color: inherit;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      max-width: 520px;
+      width: 100%;
+      overflow: hidden;
+      animation: fd-modal-in 160ms ease-out;
+    }
+    @keyframes fd-modal-in { from { transform: translateY(8px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+    .fd-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid #eee;
+    }
+    .fd-modal-title {
+      margin: 0;
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+    .fd-modal-close {
+      background: transparent;
+      border: none;
+      font-size: 1.25rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 6px;
+      border-radius: 6px;
+    }
+    .fd-modal-close:focus { outline: 2px solid #2680eb; outline-offset: 2px; }
+    .fd-modal-body { padding: 16px 20px; }
+    .fd-modal-actions { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+    .fd-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      text-decoration: none;
+      color: inherit;
+      background: #f8f9fa;
+      cursor: pointer;
+    }
+    .fd-btn-primary { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+    .fd-contact-row { display: flex; flex-direction: column; gap: 6px; }
+    .fd-contact-row a { color: #1a73e8; text-decoration: none; }
+    .fd-contact-row a:hover { text-decoration: underline; }
+  `;
+  document.head.appendChild(style);
+}
+
+function showAppointmentPopup(doctor) {
+  ensureAppointmentStyles();
+  const overlay = document.createElement('div');
+  overlay.className = 'fd-modal-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+
+  const modal = document.createElement('div');
+  modal.className = 'fd-modal';
+  modal.innerHTML = `
+    <div class="fd-modal-header">
+      <h3 class="fd-modal-title">Contact ${doctor.name}</h3>
+      <button class="fd-modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="fd-modal-body">
+      <div class="fd-contact-row">
+        ${doctor.phone ? `<div><strong>Phone:</strong> <a href="tel:${doctor.phone}">${doctor.phone}</a></div>` : ''}
+        ${doctor.email ? `<div><strong>Email:</strong> <a href="mailto:${doctor.email}">${doctor.email}</a></div>` : ''}
+      </div>
+      <div class="fd-modal-actions">
+        ${doctor.phone ? `<a class="fd-btn fd-btn-primary" href="tel:${doctor.phone}">Call</a>` : ''}
+        ${doctor.email ? `<a class="fd-btn" href="mailto:${doctor.email}">Email</a>` : ''}
+      </div>
+    </div>
+  `;
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  const cleanup = () => {
+    document.removeEventListener('keydown', onKey);
+    overlay.removeEventListener('click', onOverlayClick);
+    overlay.remove();
+  };
+  const onKey = (e) => { if (e.key === 'Escape') cleanup(); };
+  const onOverlayClick = (e) => { if (e.target === overlay) cleanup(); };
+  document.addEventListener('keydown', onKey);
+  overlay.addEventListener('click', onOverlayClick);
+  modal.querySelector('.fd-modal-close')?.addEventListener('click', cleanup);
+}
+
 function createSearchInput(placeholder, className) {
   const input = createElement('input');
   input.type = 'text';
@@ -485,7 +597,8 @@ function transformGraphQLDoctorItem(item, isAuthorEnv) {
     acceptingNewPatients: !!item?.acceptingNewPatients,
     hospital: item?.hospital || 'Medical Center',
     latitude: 0,
-    longitude: 0
+    longitude: 0,
+    bookAppointmentUrl: item?.bookAppointmentUrl || item?.appointmentUrl || item?.bookingUrl || item?.bookUrl || ''
   };
 }
 
@@ -843,8 +956,8 @@ export default async function decorate(block) {
           // Open the appointment URL in a new tab
           window.open(appointmentUrl, '_blank');
         } else {
-          // Fallback: show contact information if no URL is provided
-        alert(`Booking appointment with ${doctor.name}\n\nPhone: ${doctor.phone}\nEmail: ${doctor.email}`);
+          // Fallback: show contact information in a modal if no URL is provided
+          showAppointmentPopup(doctor);
         }
       }
     }
