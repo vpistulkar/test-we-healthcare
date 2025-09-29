@@ -159,6 +159,7 @@ function ensureAppointmentStyles() {
   const style = document.createElement('style');
   style.id = 'find-doctor-appointment-styles';
   style.textContent = `
+    body.fd-modal-open { overflow: hidden; }
     .fd-modal-overlay {
       position: fixed;
       inset: 0;
@@ -204,6 +205,16 @@ function ensureAppointmentStyles() {
     .fd-modal-close:focus { outline: 2px solid #2680eb; outline-offset: 2px; }
     .fd-modal-body { padding: 16px 20px; }
     .fd-modal-actions { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+    .fd-success {
+      display: inline-block;
+      background: #e6f4ea;
+      color: #137333;
+      border: 1px solid #c6e7d0;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
     .fd-btn {
       display: inline-flex;
       align-items: center;
@@ -239,6 +250,7 @@ function showAppointmentPopup(doctor) {
       <button class="fd-modal-close" aria-label="Close">×</button>
     </div>
     <div class="fd-modal-body">
+      <div class="fd-success">Booking confirmed!</div>
       <div class="fd-contact-row">
         ${doctor.phone ? `<div><strong>Phone:</strong> <a href="tel:${doctor.phone}">${doctor.phone}</a></div>` : ''}
         ${doctor.email ? `<div><strong>Email:</strong> <a href="mailto:${doctor.email}">${doctor.email}</a></div>` : ''}
@@ -252,11 +264,13 @@ function showAppointmentPopup(doctor) {
 
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
+  document.body.classList.add('fd-modal-open');
 
   const cleanup = () => {
     document.removeEventListener('keydown', onKey);
     overlay.removeEventListener('click', onOverlayClick);
     overlay.remove();
+    document.body.classList.remove('fd-modal-open');
   };
   const onKey = (e) => { if (e.key === 'Escape') cleanup(); };
   const onOverlayClick = (e) => { if (e.target === overlay) cleanup(); };
