@@ -418,12 +418,13 @@ function getCurrentLocation() {
 
 async function fetchDoctorData(config) {
   try {
-    const { dataSourceType, contentFragmentFolder, apiUrl } = config;
+    const { dataSourceType, contentFragmentFolder, apiUrl, damJsonAsset } = config;
     
     console.log('=== FETCH DOCTOR DATA DEBUG ===');
     console.log('Data source type:', dataSourceType);
     console.log('Content Fragment folder:', contentFragmentFolder);
     console.log('API URL:', apiUrl);
+    console.log('DAM JSON Asset:', damJsonAsset);
     console.log('Full config:', config);
     
     switch (dataSourceType) {
@@ -437,11 +438,14 @@ async function fetchDoctorData(config) {
         break;
         
       case 'api':
-        if (apiUrl) {
+        if (damJsonAsset) {
+          console.log('Attempting to fetch from DAM JSON asset:', damJsonAsset);
+          return await fetchFromAPI(damJsonAsset);
+        } else if (apiUrl) {
           console.log('Attempting to fetch from API:', apiUrl);
           return await fetchFromAPI(apiUrl);
         } else {
-          console.warn('API URL not provided, falling back to empty array');
+          console.warn('Neither DAM JSON asset nor API URL provided, falling back to empty array');
         }
         break;
         
@@ -768,6 +772,7 @@ export default async function decorate(block) {
   let dataSourceType = 'content-fragments';
   let contentFragmentFolder = '';
   let apiUrl = '';
+  let damJsonAsset = '';
   let enableLocationSearch = true;
   let enableSpecialtyFilter = true;
   let enableProviderNameSearch = true;
@@ -800,6 +805,8 @@ export default async function decorate(block) {
               case 'contentfragmentfolder': contentFragmentFolder = value; break;
               case 'api url':
               case 'apiurl': apiUrl = value; break;
+              case 'dam json asset':
+              case 'damjsonasset': damJsonAsset = value; break;
               case 'enable location search':
               case 'enablelocationsearch': enableLocationSearch = value !== 'false'; break;
               case 'enable specialty filter':
@@ -830,6 +837,7 @@ export default async function decorate(block) {
     dataSourceType,
     contentFragmentFolder,
     apiUrl,
+    damJsonAsset,
     enableLocationSearch,
     enableSpecialtyFilter,
     enableProviderNameSearch,
