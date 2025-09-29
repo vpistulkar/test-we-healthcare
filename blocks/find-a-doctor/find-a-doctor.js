@@ -5,8 +5,10 @@ import { isAuthorEnvironment } from '../../scripts/scripts.js';
 // Sample doctor data - in production, this would come from your data source
 const GRAPHQL_DOCTORS_BY_FOLDER_QUERY = '/graphql/execute.json/weHealthcare/GetDoctorsFromFolder';
 const CONFIG = {
-  WRAPPER_SERVICE_URL: 'https://defaultfa7b1b5a7b34438794aed2c178dece.e1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/2660b7afa9524acbae379074ae38501e/triggers/manual/paths/invoke',
-  WRAPPER_SERVICE_PARAMS: 'api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=uDpzD2f3QIHYqS4krx0sTF4M_2pElDpQ0lTHvFl9ntU'
+  /*WRAPPER_SERVICE_URL: 'https://defaultfa7b1b5a7b34438794aed2c178dece.e1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/2660b7afa9524acbae379074ae38501e/triggers/manual/paths/invoke',*/
+   /*WRAPPER_SERVICE_PARAMS: 'api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=540k5P2jXO3u7i_9VxBp_X3aTqTn8a0o9zYjQiJt5pQ'*/
+  WRAPPER_SERVICE_URL: 'https://prod-60.eastus2.logic.azure.com:443/workflows/94ef4cd1fc1243e08aeab8ae74bc7980/triggers/manual/paths/invoke',
+  WRAPPER_SERVICE_PARAMS: 'api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=e81iCCcESEf9NzzxLvbfMGPmredbADtTZSs8mspUTa4'
 };
 
 function isAuthorEnvironmentSimple() {
