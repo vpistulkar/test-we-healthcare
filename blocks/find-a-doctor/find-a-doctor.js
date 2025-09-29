@@ -771,6 +771,8 @@ export default async function decorate(block) {
   let enableLocationSearch = true;
   let enableSpecialtyFilter = true;
   let enableProviderNameSearch = true;
+  let enableSubmitAction = true;
+  let submitUrl = '';
   
   // Parse config from block structure (key-value pairs)
   const rows = Array.from(block.querySelectorAll(':scope > div'));
@@ -804,6 +806,10 @@ export default async function decorate(block) {
               case 'enablespecialtyfilter': enableSpecialtyFilter = value !== 'false'; break;
               case 'enable provider name search':
               case 'enableprovidernamesearch': enableProviderNameSearch = value !== 'false'; break;
+              case 'enable submit action':
+              case 'enablesubmitaction': enableSubmitAction = value !== 'false'; break;
+              case 'submit url':
+              case 'submiturl': submitUrl = value; break;
             }
   });
 
@@ -826,7 +832,9 @@ export default async function decorate(block) {
     apiUrl,
     enableLocationSearch,
     enableSpecialtyFilter,
-    enableProviderNameSearch
+    enableProviderNameSearch,
+    enableSubmitAction,
+    submitUrl
   };
   
   console.log('=== FINAL CONFIG VALUES ===');
@@ -964,7 +972,10 @@ export default async function decorate(block) {
       const doctor = doctors.find(d => d.id === doctorId);
       
       if (doctor) {
-        if (appointmentUrl && appointmentUrl.trim()) {
+        if (config.enableSubmitAction && config.submitUrl && config.submitUrl.trim()) {
+          // Redirect to the configured submit URL
+          window.location.href = config.submitUrl;
+        } else if (appointmentUrl && appointmentUrl.trim()) {
           // Open the appointment URL in a new tab
           window.open(appointmentUrl, '_blank');
         } else {
