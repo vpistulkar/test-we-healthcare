@@ -255,10 +255,6 @@ function showAppointmentPopup(doctor) {
         ${doctor.phone ? `<div><strong>Phone:</strong> <a href="tel:${doctor.phone}">${doctor.phone}</a></div>` : ''}
         ${doctor.email ? `<div><strong>Email:</strong> <a href="mailto:${doctor.email}">${doctor.email}</a></div>` : ''}
       </div>
-      <div class="fd-modal-actions">
-        ${doctor.phone ? `<a class="fd-btn fd-btn-primary" href="tel:${doctor.phone}">Call</a>` : ''}
-        ${doctor.email ? `<a class="fd-btn" href="mailto:${doctor.email}">Email</a>` : ''}
-      </div>
     </div>
   `;
 
