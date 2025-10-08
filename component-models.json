@@ -67,6 +67,7 @@
           "component": "select",
           "name": "theme",
           "label": "Theme",
+          "description": "Select the theme will override the CF selected theme",
           "options": [
             {
               "name": "default",
@@ -671,14 +672,6 @@
           {
             "name": "Image Right",
             "value": "image-right"
-          },
-          {
-            "name": "Image Top",
-            "value": "image-top"
-          },
-          {
-            "name": "Image Bottom",
-            "value": "image-bottom"
           },
           {
             "name": "Image-Background Text-Left",
@@ -6352,17 +6345,6 @@
         "name": "apiUrl",
         "label": "API URL",
         "description": "External API endpoint for doctor data",
-        "condition": { "==": [{ "var": "dataSourceType" }, "api"] }
-      },
-      {
-        "component": "aem-content",
-        "name": "damJsonAsset",
-        "label": "DAM JSON Asset",
-        "description": "Select JSON file from DAM as alternative to external API",
-        "valueType": "string",
-        "validation": {
-          "rootPath": "/content/dam"
-        },
         "condition": { "==": [{ "var": "dataSourceType" }, "api"] }
       },
       {
